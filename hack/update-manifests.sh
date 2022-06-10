@@ -8,25 +8,23 @@ KUSTOMIZE=kustomize
 
 SRCROOT="$( CDPATH='' cd -- "$(dirname "$0")/.." && pwd -P )"
 AUTOGENMSG="# This is an auto-generated file. DO NOT EDIT"
+CURRENT_DIR=$(pwd)
 
 cd ${SRCROOT}/manifests/ha/base/redis-ha && ./generate.sh
-
+VERSION=$(cat ${CURRENT_DIR}/VERSION)
 IMAGE_NAMESPACE="${IMAGE_NAMESPACE:-quay.io/argoproj}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 
 # if the tag has not been declared, and we are on a release branch, use the VERSION file.
 if [ "$IMAGE_TAG" = "" ]; then
-  branch=$(git rev-parse --abbrev-ref HEAD)
-  if [[ $branch = release-* ]]; then
-    pwd
-    IMAGE_TAG=v$(cat $SRCROOT/VERSION)
-  fi
+  pwd
+  IMAGE_TAG="v$VERSION"
 fi
 # otherwise, use latest
 if [ "$IMAGE_TAG" = "" ]; then
   IMAGE_TAG=latest
 fi
-
+echo $IMAGE_TAG
 # bundle_with_addons bundles given kustomize base with either stable or latest version of addons
 function bundle_with_addons() {
   for addon in $(ls $SRCROOT/manifests/addons | grep -v README.md); do

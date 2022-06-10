@@ -212,6 +212,10 @@ clidocsgen: ensure-gopath
 codegen-local: ensure-gopath mod-vendor-local notification-docs notification-catalog gogen protogen clientgen openapigen clidocsgen manifests-local
 	rm -rf vendor/
 
+.PHONY: harness-gen
+harness-gen: ensure-gopath mod-vendor-local gogen protogen openapigen manifests-local
+	rm -rf vendor/
+	
 .PHONY: codegen
 codegen: test-tools-image
 	$(call run-in-test-client,make codegen-local)

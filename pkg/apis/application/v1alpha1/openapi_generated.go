@@ -1592,6 +1592,13 @@ func schema_pkg_apis_application_v1alpha1_ClusterConfig(ref common.ReferenceCall
 							Ref:         ref("github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1.ExecProviderConfig"),
 						},
 					},
+					"clusterConnectionType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Identifies the authentication method used to connect to the cluster",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"tlsClientConfig"},
 			},
@@ -3114,6 +3121,13 @@ func schema_pkg_apis_application_v1alpha1_Repository(ref common.ReferenceCallbac
 					"project": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Reference between project and repository that allow you automatically to be added as item inside SourceRepos project entity",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"connectionType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Identifies the authentication method used to connect to the repository",
 							Type:        []string{"string"},
 							Format:      "",
 						},

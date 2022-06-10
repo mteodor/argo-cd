@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -1404,6 +1405,26 @@ type ExecProviderConfig struct {
 	InstallHint string `json:"installHint,omitempty" protobuf:"bytes,5,opt,name=installHint"`
 }
 
+// ConnectionType enum
+type ClusterConnectionType string
+
+var clusterConnectionOptions = []string{"IN_CLUSTER", "USERNAME_PASSWORD", "SERVICE_ACCOUNT"}
+
+const (
+	CLUSTER_CONNECTION_TYPE_NOT_SET ClusterConnectionType = "CLUSTER_CONNECTION_TYPE_NOT_SET"
+	IN_CLUSTER                                            = "IN_CLUSTER"
+	USERNAME_PASSWORD                                     = "USERNAME_PASSWORD"
+	SERVICE_ACCOUNT                                       = "SERVICE_ACCOUNT"
+)
+
+func (ct ClusterConnectionType) IsValid() error {
+	switch ct {
+	case IN_CLUSTER, USERNAME_PASSWORD, SERVICE_ACCOUNT:
+		return nil
+	}
+	return errors.New(fmt.Sprintf("Invalid ClusterConnectionType, available options are, %s", clusterConnectionOptions))
+}
+
 // ClusterConfig is the configuration attributes. This structure is subset of the go-client
 // rest.Config with annotations added for marshalling.
 type ClusterConfig struct {
@@ -1424,6 +1445,9 @@ type ClusterConfig struct {
 
 	// ExecProviderConfig contains configuration for an exec provider
 	ExecProviderConfig *ExecProviderConfig `json:"execProviderConfig,omitempty" protobuf:"bytes,6,opt,name=execProviderConfig"`
+
+	// Identifies the authentication method used to connect to the cluster
+	ConnectionType ClusterConnectionType `json:"clusterConnectionType,omitempty" protobuf:"bytes,7,opt,name=clusterConnectionType"`
 }
 
 // TLSClientConfig contains settings to enable transport layer security

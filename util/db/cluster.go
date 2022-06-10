@@ -81,6 +81,10 @@ func (db *db) ListClusters(ctx context.Context) (*appv1.ClusterList, error) {
 
 // CreateCluster creates a cluster
 func (db *db) CreateCluster(ctx context.Context, c *appv1.Cluster) (*appv1.Cluster, error) {
+	if err := c.Config.ConnectionType.IsValid(); c.Config.ConnectionType != "" && err != nil {
+		return nil, err
+	}
+
 	secName, err := URIToSecretName("cluster", c.Server)
 	if err != nil {
 		return nil, err
@@ -262,6 +266,9 @@ func (db *db) GetClusterServersByName(ctx context.Context, name string) ([]strin
 
 // UpdateCluster updates a cluster
 func (db *db) UpdateCluster(ctx context.Context, c *appv1.Cluster) (*appv1.Cluster, error) {
+	if err := c.Config.ConnectionType.IsValid(); c.Config.ConnectionType != "" && err != nil {
+		return nil, err
+	}
 	clusterSecret, err := db.getClusterSecret(c.Server)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {

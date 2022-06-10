@@ -63,6 +63,8 @@ go-to-protobuf \
 #GOPROTOBINARY=gofast
 # 3. protoc-gen-gogofast - faster code generation and gogo extensions and flexibility in controlling
 # the generated go code (e.g. customizing field names, nullable fields)
+go build -o dist/protoc-gen-gogofast ./vendor/github.com/gogo/protobuf/protoc-gen-gogofast
+
 GOPROTOBINARY=gogofast
 
 # Generate server/<service>/(<service>.pb.go|<service>.pb.gw.go)
@@ -79,7 +81,7 @@ for i in ${PROTO_FILES}; do
         -I$GOPATH/src \
         -I${GOOGLE_PROTO_API_PATH} \
         -I${GOGO_PROTOBUF_PATH} \
-        --${GOPROTOBINARY}_out=plugins=grpc:$GOPATH/src \
+        --${GOPROTOBINARY}_out=Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types,plugins=grpc:$GOPATH/src \
         --grpc-gateway_out=logtostderr=true:$GOPATH/src \
         --swagger_out=logtostderr=true:. \
         $i
@@ -121,7 +123,7 @@ clean_swagger() {
 }
 
 echo "If additional types are added, the number of expected collisions may need to be increased"
-EXPECTED_COLLISION_COUNT=64
+EXPECTED_COLLISION_COUNT=65
 collect_swagger server ${EXPECTED_COLLISION_COUNT}
 clean_swagger server
 clean_swagger reposerver

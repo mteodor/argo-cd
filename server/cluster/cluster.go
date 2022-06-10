@@ -3,6 +3,11 @@ package cluster
 import (
 	"time"
 
+	protov1 "github.com/golang/protobuf/proto"
+	"github.com/mennanov/fmutils"
+
+	"github.com/argoproj/argo-cd/v2/util/grpc"
+
 	"github.com/argoproj/gitops-engine/pkg/utils/kube"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -21,6 +26,8 @@ import (
 	"github.com/argoproj/argo-cd/v2/util/db"
 	"github.com/argoproj/argo-cd/v2/util/rbac"
 )
+
+const SecretMask = "********"
 
 // Server provides a Cluster service
 type Server struct {
@@ -217,6 +224,7 @@ func (s *Server) Update(ctx context.Context, q *cluster.ClusterUpdateRequest) (*
 		return nil, err
 	}
 
+	// TODO harness test logic here
 	if len(q.UpdatedFields) == 0 || sets.NewString(q.UpdatedFields...).Has("project") {
 		// verify that user can do update inside project where cluster will be located
 		if err := s.enf.EnforceErr(ctx.Value("claims"), rbacpolicy.ResourceClusters, rbacpolicy.ActionUpdate, createRBACObject(q.Cluster.Project, q.Cluster.Server)); err != nil {
@@ -224,13 +232,26 @@ func (s *Server) Update(ctx context.Context, q *cluster.ClusterUpdateRequest) (*
 		}
 	}
 
-	if len(q.UpdatedFields) != 0 {
+	if q.UpdateMask != nil && len(q.UpdateMask.Paths) != 0 {
+		existing, err := s.db.GetCluster(ctx, q.Cluster.Server)
+		if err != nil {
+			return nil, err
+		}
+
+		grpc.Mask(protov1.MessageV2(existing), protov1.MessageV2(q.Cluster), fmutils.NestedMaskFromPaths(q.UpdateMask.Paths))
+		q.Cluster = existing
+	} else if len(q.UpdatedFields) != 0 {
+		existing, err := s.db.GetCluster(ctx, q.Cluster.Server)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, path := range q.UpdatedFields {
 			if updater, ok := clusterFieldsByPath[path]; ok {
-				updater(c, q.Cluster)
+				updater(existing, q.Cluster)
 			}
 		}
-		q.Cluster = c
+		q.Cluster = existing
 	}
 
 	// Test the token we just created before persisting it
@@ -330,18 +351,8 @@ func (s *Server) RotateAuth(ctx context.Context, q *cluster.ClusterQuery) (*clus
 
 func (s *Server) toAPIResponse(clust *appv1.Cluster) *appv1.Cluster {
 	_ = s.cache.GetClusterInfo(clust.Server, &clust.Info)
+	maskSecrets(clust)
 
-	clust.Config.Password = ""
-	clust.Config.BearerToken = ""
-	clust.Config.TLSClientConfig.KeyData = nil
-	if clust.Config.ExecProviderConfig != nil {
-		// We can't know what the user has put into args or
-		// env vars on the exec provider that might be sensitive
-		// (e.g. --private-key=XXX, PASSWORD=XXX)
-		// Implicitly assumes the command executable name is non-sensitive
-		clust.Config.ExecProviderConfig.Env = make(map[string]string)
-		clust.Config.ExecProviderConfig.Args = nil
-	}
 	// populate deprecated fields for backward compatibility
 	clust.ServerVersion = clust.Info.ServerVersion
 	clust.ConnectionState = clust.Info.ConnectionState
@@ -364,4 +375,32 @@ func (s *Server) InvalidateCache(ctx context.Context, q *cluster.ClusterQuery) (
 		return nil, err
 	}
 	return s.toAPIResponse(cls), nil
+}
+
+func maskSecrets(clus *appv1.Cluster) {
+	if clus.Config.BearerToken != "" {
+		clus.Config.BearerToken = SecretMask
+	}
+
+	if clus.Config.Password != "" {
+		clus.Config.Password = SecretMask
+	}
+
+	if clus.Config.KeyData != nil {
+		clus.Config.KeyData = []byte(SecretMask)
+	}
+
+	if clus.Config.ExecProviderConfig != nil {
+		// We can't know what the user has put into args or
+		// env vars on the exec provider that might be sensitive
+		// (e.g. --private-key=XXX, PASSWORD=XXX)
+		// Implicitly assumes the command executable name is non-sensitive
+		for k := range clus.Config.ExecProviderConfig.Env {
+			clus.Config.ExecProviderConfig.Env[k] = SecretMask
+		}
+
+		for index := range clus.Config.ExecProviderConfig.Args {
+			clus.Config.ExecProviderConfig.Args[index] = SecretMask
+		}
+	}
 }

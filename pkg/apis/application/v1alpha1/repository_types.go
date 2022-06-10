@@ -1,15 +1,56 @@
 package v1alpha1
 
 import (
+	"errors"
+	"fmt"
 	"net/url"
+
+	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/argoproj/argo-cd/v2/util/cert"
 	"github.com/argoproj/argo-cd/v2/util/git"
 	"github.com/argoproj/argo-cd/v2/util/helm"
-
-	log "github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// ConnectionType enum
+type ConnectionType string
+
+var connectionOptions = []string{"HTTPS_ANONYMOUS", "HTTPS", "SSH", "GITHUB", "GITHUB_ENTERPRISE"}
+
+const (
+	CONNECTION_TYPE_NOT_SET ConnectionType = "CONNECTION_TYPE_NOT_SET"
+	HTTPS_ANONYMOUS                        = "HTTPS_ANONYMOUS"
+	HTTPS                                  = "HTTPS"
+	SSH                                    = "SSH"
+	GITHUB                                 = "GITHUB"
+	GITHUB_ENTERPRISE                      = "GITHUB_ENTERPRISE"
+)
+
+func ConnectionTypeToString(conType ConnectionType) string {
+	switch conType {
+	default:
+		return "CONNECTION_TYPE_NOT_SET"
+	case HTTPS_ANONYMOUS:
+		return "HTTPS_ANONYMOUS"
+	case HTTPS:
+		return "HTTPS"
+	case SSH:
+		return "SSH"
+	case GITHUB:
+		return "GITHUB"
+	case GITHUB_ENTERPRISE:
+		return "GITHUB_ENTERPRISE"
+	}
+}
+
+func (ct ConnectionType) IsValid() error {
+	switch ct {
+	case HTTPS_ANONYMOUS, HTTPS, SSH, GITHUB, GITHUB_ENTERPRISE:
+		return nil
+	}
+	return errors.New(fmt.Sprintf("Invalid connectionType, available options are, %s", connectionOptions))
+}
 
 // RepoCreds holds the definition for repository credentials
 type RepoCreds struct {
@@ -82,6 +123,8 @@ type Repository struct {
 	Proxy string `json:"proxy,omitempty" protobuf:"bytes,19,opt,name=proxy"`
 	// Reference between project and repository that allow you automatically to be added as item inside SourceRepos project entity
 	Project string `json:"project,omitempty" protobuf:"bytes,20,opt,name=project"`
+	// Identifies the authentication method used to connect to the repository
+	ConnectionType ConnectionType `json:"connectionType,omitempty" protobuf:"bytes,21,opt,name=connectionType"`
 }
 
 // IsInsecure returns true if the repository has been configured to skip server verification

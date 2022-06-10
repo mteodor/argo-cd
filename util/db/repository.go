@@ -54,6 +54,9 @@ type repositoryBackend interface {
 }
 
 func (db *db) CreateRepository(ctx context.Context, r *appsv1.Repository) (*appsv1.Repository, error) {
+	if err := r.ConnectionType.IsValid(); err != nil {
+		return nil, err
+	}
 	secretBackend := db.repoBackend()
 	legacyBackend := db.legacyRepoBackend()
 
@@ -165,6 +168,9 @@ func (db *db) listRepositories(ctx context.Context, repoType *string) ([]*appsv1
 
 // UpdateRepository updates a repository
 func (db *db) UpdateRepository(ctx context.Context, r *appsv1.Repository) (*appsv1.Repository, error) {
+	if err := r.ConnectionType.IsValid(); r.ConnectionType != "" && err != nil {
+		return nil, err
+	}
 	secretsBackend := db.repoBackend()
 	exists, err := secretsBackend.RepositoryExists(ctx, r.Repo)
 	if err != nil {

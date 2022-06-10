@@ -6,4 +6,4 @@ resources:
 
 images:
 - name: argocd-e2e-cluster 
-  newTag: latest
+  newTag: v2.3.4

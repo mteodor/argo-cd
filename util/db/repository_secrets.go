@@ -305,6 +305,11 @@ func secretToRepository(secret *corev1.Secret) (*appsv1.Repository, error) {
 		GitHubAppEnterpriseBaseURL: string(secret.Data["githubAppEnterpriseBaseUrl"]),
 		Proxy:                      string(secret.Data["proxy"]),
 		Project:                    string(secret.Data["project"]),
+		ConnectionType:             appsv1.ConnectionType(string(secret.Data["connectionType"])),
+	}
+
+	if err := repository.ConnectionType.IsValid(); err != nil {
+		return repository, err
 	}
 
 	insecureIgnoreHostKey, err := boolOrFalse(secret, "insecureIgnoreHostKey")
@@ -369,6 +374,7 @@ func repositoryToSecret(repository *appsv1.Repository, secret *corev1.Secret) {
 	updateSecretBool(secret, "insecure", repository.Insecure)
 	updateSecretBool(secret, "enableLfs", repository.EnableLFS)
 	updateSecretString(secret, "proxy", repository.Proxy)
+	updateSecretString(secret, "connectionType", appsv1.ConnectionTypeToString(repository.ConnectionType))
 	addSecretMetadata(secret, common.LabelValueSecretTypeRepository)
 }
 

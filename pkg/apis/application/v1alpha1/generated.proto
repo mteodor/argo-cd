@@ -459,6 +459,9 @@ message ClusterConfig {
 
   // ExecProviderConfig contains configuration for an exec provider
   optional ExecProviderConfig execProviderConfig = 6;
+
+  // Identifies the authentication method used to connect to the cluster
+  optional string clusterConnectionType = 7;
 }
 
 // ClusterInfo contains information about the cluster
@@ -918,6 +921,9 @@ message Repository {
 
   // Reference between project and repository that allow you automatically to be added as item inside SourceRepos project entity
   optional string project = 20;
+
+  // Identifies the authentication method used to connect to the repository
+  optional string connectionType = 21;
 }
 
 // A RepositoryCertificate is either SSH known hosts entry or TLS certificate

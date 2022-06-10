@@ -42,7 +42,7 @@ argocd admin settings rbac validate --policy-file=POLICYFILE [flags]
       --grpc-web-root-path string       Enables gRPC-web protocol. Useful if Argo CD server is behind proxy which does not support HTTP2. Set web root.
   -H, --header strings                  Sets additional header to all requests made by Argo CD CLI. (Can be repeated multiple times to add multiple headers, also supports comma separated headers)
       --http-retry-max int              Maximum number of retries to establish http connection to Argo CD server
-      --insecure                        Skip server certificate and domain verification
+      --insecure                        Skip server certificate and domain verification (default true)
       --insecure-skip-tls-verify        If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
       --kubeconfig string               Path to a kube config. Only required if out-of-cluster
       --load-cluster-settings           Indicates that config map and secret should be loaded from cluster unless local file path is provided

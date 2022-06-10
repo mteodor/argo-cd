@@ -124,7 +124,7 @@ initContainers:
   - -n
   - /usr/local/bin/argocd
   - /var/run/argocd/argocd-cmp-server
-  image: quay.io/argoproj/argocd:latest
+  image: quay.io/argoproj/argocd:v2.3.4
   name: copyutil
   volumeMounts:
   - mountPath: /var/run/argocd
@@ -247,7 +247,7 @@ initContainers:
   - -n
   - /usr/local/bin/argocd
   - /var/run/argocd/argocd-cmp-server
-  image: quay.io/argoproj/argocd:latest
+  image: quay.io/argoproj/argocd:v2.3.4
   name: copyutil
   volumeMounts:
   - mountPath: /var/run/argocd

@@ -6,6 +6,9 @@ import (
 
 	"github.com/argoproj/gitops-engine/pkg/utils/kube"
 	"github.com/argoproj/gitops-engine/pkg/utils/text"
+
+	protov1 "github.com/golang/protobuf/proto"
+	"github.com/mennanov/fmutils"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -24,10 +27,13 @@ import (
 	"github.com/argoproj/argo-cd/v2/util/argo"
 	"github.com/argoproj/argo-cd/v2/util/db"
 	"github.com/argoproj/argo-cd/v2/util/errors"
+	"github.com/argoproj/argo-cd/v2/util/grpc"
 	"github.com/argoproj/argo-cd/v2/util/io"
 	"github.com/argoproj/argo-cd/v2/util/rbac"
 	"github.com/argoproj/argo-cd/v2/util/settings"
 )
+
+const SecretMask = "********"
 
 // Server provides a Repository service
 type Server struct {
@@ -146,24 +152,14 @@ func (s *Server) Get(ctx context.Context, q *repositorypkg.RepoQuery) (*appsv1.R
 	if rType == "" {
 		rType = common.DefaultRepoType
 	}
-	// remove secrets
-	item := appsv1.Repository{
-		Repo:                       repo.Repo,
-		Type:                       rType,
-		Name:                       repo.Name,
-		Username:                   repo.Username,
-		Insecure:                   repo.IsInsecure(),
-		EnableLFS:                  repo.EnableLFS,
-		GithubAppId:                repo.GithubAppId,
-		GithubAppInstallationId:    repo.GithubAppInstallationId,
-		GitHubAppEnterpriseBaseURL: repo.GitHubAppEnterpriseBaseURL,
-		Proxy:                      repo.Proxy,
-		Project:                    repo.Project,
-	}
 
-	item.ConnectionState = s.getConnectionState(ctx, item.Repo, q.ForceRefresh)
+	maskSecrets(repo)
 
-	return &item, nil
+	repo.Type = rType
+	repo.Insecure = repo.IsInsecure()
+	repo.ConnectionState = s.getConnectionState(ctx, repo.Repo, q.ForceRefresh)
+
+	return repo, nil
 }
 
 // ListRepositories returns a list of all configured repositories and the state of their connections
@@ -180,18 +176,11 @@ func (s *Server) ListRepositories(ctx context.Context, q *repositorypkg.RepoQuer
 			if rType == "" {
 				rType = common.DefaultRepoType
 			}
-			// remove secrets
-			items = append(items, &appsv1.Repository{
-				Repo:      repo.Repo,
-				Type:      rType,
-				Name:      repo.Name,
-				Username:  repo.Username,
-				Insecure:  repo.IsInsecure(),
-				EnableLFS: repo.EnableLFS,
-				EnableOCI: repo.EnableOCI,
-				Proxy:     repo.Proxy,
-				Project:   repo.Project,
-			})
+
+			maskSecrets(repo)
+			repo.Type = rType
+			repo.Insecure = repo.IsInsecure()
+			items = append(items, repo)
 		}
 	}
 	err = kube.RunAllAsync(len(items), func(i int) error {
@@ -246,10 +235,12 @@ func (s *Server) ListApps(ctx context.Context, q *repositorypkg.RepoAppsQuery) (
 		!s.enf.Enforce(claims, rbacpolicy.ResourceApplications, rbacpolicy.ActionUpdate, appRBACresource) {
 		return nil, errPermissionDenied
 	}
+
+	// HARNESS: Not backwards compatible
 	// Also ensure the repo is actually allowed in the project in question
-	if err := s.isRepoPermittedInProject(q.Repo, q.AppProject); err != nil {
-		return nil, err
-	}
+	// if err := s.isRepoPermittedInProject(q.Repo, q.AppProject); err != nil {
+	// 	return nil, err
+	// }
 
 	// Test the repo
 	conn, repoClient, err := s.repoClientset.NewRepoServerClient()
@@ -424,7 +415,9 @@ func (s *Server) CreateRepository(ctx context.Context, q *repositorypkg.RepoCrea
 	if err != nil {
 		return nil, err
 	}
-	return &appsv1.Repository{Repo: repo.Repo, Type: repo.Type, Name: repo.Name}, nil
+
+	maskSecrets(repo)
+	return repo, nil
 }
 
 // Update updates a repository or credential set
@@ -452,8 +445,24 @@ func (s *Server) UpdateRepository(ctx context.Context, q *repositorypkg.RepoUpda
 	if err := s.enf.EnforceErr(ctx.Value("claims"), rbacpolicy.ResourceRepositories, rbacpolicy.ActionUpdate, createRBACObject(q.Repo.Project, q.Repo.Repo)); err != nil {
 		return nil, err
 	}
-	_, err = s.db.UpdateRepository(ctx, q.Repo)
-	return &appsv1.Repository{Repo: q.Repo.Repo, Type: q.Repo.Type, Name: q.Repo.Name}, err
+
+	if q.UpdateMask != nil && len(q.UpdateMask.Paths) != 0 {
+		existing, err := s.db.GetRepository(ctx, q.Repo.Repo)
+		if err != nil {
+			return nil, err
+		}
+
+		grpc.Mask(protov1.MessageV2(existing), protov1.MessageV2(q.Repo), fmutils.NestedMaskFromPaths(q.UpdateMask.Paths))
+		q.Repo = existing
+	}
+
+	repo, err = s.db.UpdateRepository(ctx, q.Repo)
+	if err != nil {
+		return nil, err
+	}
+
+	maskSecrets(repo)
+	return repo, nil
 }
 
 // Delete removes a repository from the configuration
@@ -566,4 +575,25 @@ func isSourceInHistory(app *v1alpha1.Application, source v1alpha1.ApplicationSou
 		}
 	}
 	return false
+}
+func maskSecrets(repo *appsv1.Repository) {
+	if repo.GithubAppPrivateKey != "" {
+		repo.GithubAppPrivateKey = SecretMask
+	}
+
+	if repo.TLSClientCertData != "" {
+		repo.TLSClientCertData = SecretMask
+	}
+
+	if repo.TLSClientCertKey != "" {
+		repo.TLSClientCertKey = SecretMask
+	}
+
+	if repo.SSHPrivateKey != "" {
+		repo.SSHPrivateKey = SecretMask
+	}
+
+	if repo.Password != "" {
+		repo.Password = SecretMask
+	}
 }

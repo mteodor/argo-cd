@@ -51,7 +51,7 @@ following example builds an entirely customized repo-server from a Dockerfile, i
 dependencies that may be needed for generating manifests.
 
 ```Dockerfile
-FROM argoproj/argocd:latest
+FROM argoproj/argocd:v2.3.4
 
 # Switch to root for the ability to perform install
 USER root

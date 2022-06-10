@@ -96,7 +96,7 @@ func (s *Server) CreateRepositoryCredentials(ctx context.Context, q *repocredspk
 			return nil, status.Errorf(codes.InvalidArgument, argo.GenerateSpecIsDifferentErrorMessage("repository credentials", existing, r))
 		}
 	}
-	return &appsv1.RepoCreds{URL: r.URL}, err
+	return r, err
 }
 
 // UpdateRepositoryCredentials updates a repository credential set
@@ -108,7 +108,7 @@ func (s *Server) UpdateRepositoryCredentials(ctx context.Context, q *repocredspk
 		return nil, err
 	}
 	_, err := s.db.UpdateRepositoryCredentials(ctx, q.Creds)
-	return &appsv1.RepoCreds{URL: q.Creds.URL}, err
+	return q.Creds, err
 }
 
 // DeleteRepositoryCredentials removes a credential set from the configuration
