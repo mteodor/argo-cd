@@ -56,8 +56,18 @@ func (s *Server) ListRepositoryCredentials(ctx context.Context, q *repocredspkg.
 			}
 			if repo != nil {
 				items = append(items, appsv1.RepoCreds{
-					URL:      url,
-					Username: repo.Username,
+					URL:                        url,
+					Username:                   repo.Username,
+					Password:                   repo.Password,
+					SSHPrivateKey:              repo.SSHPrivateKey,
+					TLSClientCertData:          repo.TLSClientCertData,
+					TLSClientCertKey:           repo.TLSClientCertKey,
+					GithubAppPrivateKey:        repo.GithubAppPrivateKey,
+					GithubAppId:                repo.GithubAppId,
+					GithubAppInstallationId:    repo.GithubAppInstallationId,
+					GitHubAppEnterpriseBaseURL: repo.GitHubAppEnterpriseBaseURL,
+					EnableOCI:                  repo.EnableOCI,
+					Type:                       repo.Type,
 				})
 			}
 		}

@@ -370,24 +370,21 @@ func (s *Server) CreateRepository(ctx context.Context, q *repositorypkg.RepoCrea
 		return nil, err
 	}
 
-	var repo *appsv1.Repository
 	var err error
 
-	// check we can connect to the repo, copying any existing creds (not supported for project scoped repositories)
-	if q.Repo.Project == "" {
-		repo := q.Repo.DeepCopy()
-		if !repo.HasCredentials() {
-			creds, err := s.db.GetRepositoryCredentials(ctx, repo.Repo)
-			if err != nil {
-				return nil, err
-			}
-			repo.CopyCredentialsFrom(creds)
-		}
-
-		err = s.testRepo(ctx, repo)
+	// check we can connect to the repo, copying any existing creds
+	repo := q.Repo.DeepCopy()
+	if !repo.HasCredentials() {
+		creds, err := s.db.GetRepositoryCredentials(ctx, repo.Repo)
 		if err != nil {
 			return nil, err
 		}
+		repo.CopyCredentialsFrom(creds)
+	}
+
+	err = s.testRepo(ctx, repo)
+	if err != nil {
+		return nil, err
 	}
 
 	r := q.Repo
@@ -497,7 +494,6 @@ func (s *Server) ValidateAccess(ctx context.Context, q *repositorypkg.RepoAccess
 	if err := s.enf.EnforceErr(ctx.Value("claims"), rbacpolicy.ResourceRepositories, rbacpolicy.ActionCreate, createRBACObject(q.Project, q.Repo)); err != nil {
 		return nil, err
 	}
-
 	repo := &appsv1.Repository{
 		Repo:                       q.Repo,
 		Type:                       q.Type,
@@ -514,20 +510,33 @@ func (s *Server) ValidateAccess(ctx context.Context, q *repositorypkg.RepoAccess
 		GithubAppInstallationId:    q.GithubAppInstallationID,
 		GitHubAppEnterpriseBaseURL: q.GithubAppEnterpriseBaseUrl,
 		Proxy:                      q.Proxy,
+		ConnectionType:             appsv1.ConnectionType(q.ConnectionType),
 	}
 
-	// If repo does not have credentials, check if there are credentials stored
-	// for it and if yes, copy them
-	if !repo.HasCredentials() {
-		repoCreds, err := s.db.GetRepositoryCredentials(ctx, q.Repo)
-		if err != nil {
-			return nil, err
-		}
-		if repoCreds != nil {
-			repo.CopyCredentialsFrom(repoCreds)
+	// Get any existing credentials for the repo URL
+	existingRepoCreds, err := s.db.GetRepositoryCredentials(ctx, q.Repo)
+	if err != nil {
+		return nil, err
+	}
+	// Check for update mask list to identify which attributes have been updated
+	if q.UpdateMask != nil && len(q.UpdateMask.Paths) != 0 {
+		// adding repo to the path here because we need to test using the repo URL and not the template URL
+		q.UpdateMask.Paths = append(q.UpdateMask.Paths, "repo")
+		// creating a dummy repo object from the template
+		repoFromExistingCreds := createRepoFromCredentials(existingRepoCreds)
+		// copying over only select attributes from repo to repoFromExistingCreds which are present in the mask paths
+		grpc.Mask(protov1.MessageV2(repoFromExistingCreds), protov1.MessageV2(repo), fmutils.NestedMaskFromPaths(q.UpdateMask.Paths))
+		repo = repoFromExistingCreds
+	}
+
+	// If repo does not have credentials, check if there are credentials stored for it and if yes, copy them
+	// Repo with connection type HTTPS_ANONYMOUS do not have any credentials
+	if !repo.HasCredentials() && repo.ConnectionType != appsv1.HTTPS_ANONYMOUS {
+		if existingRepoCreds != nil {
+			repo.CopyCredentialsFrom(existingRepoCreds)
 		}
 	}
-	err := s.testRepo(ctx, repo)
+	err = s.testRepo(ctx, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -595,5 +604,22 @@ func maskSecrets(repo *appsv1.Repository) {
 
 	if repo.Password != "" {
 		repo.Password = SecretMask
+	}
+}
+
+func createRepoFromCredentials(repoCreds *appsv1.RepoCreds) *appsv1.Repository {
+	return &appsv1.Repository{
+		Repo:                       repoCreds.URL,
+		Type:                       repoCreds.Type,
+		Username:                   repoCreds.Username,
+		Password:                   repoCreds.Password,
+		SSHPrivateKey:              repoCreds.SSHPrivateKey,
+		TLSClientCertData:          repoCreds.TLSClientCertData,
+		TLSClientCertKey:           repoCreds.TLSClientCertKey,
+		EnableOCI:                  repoCreds.EnableOCI,
+		GithubAppPrivateKey:        repoCreds.GithubAppPrivateKey,
+		GithubAppId:                repoCreds.GithubAppId,
+		GithubAppInstallationId:    repoCreds.GithubAppInstallationId,
+		GitHubAppEnterpriseBaseURL: repoCreds.GitHubAppEnterpriseBaseURL,
 	}
 }

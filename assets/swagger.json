@@ -2492,6 +2492,16 @@
             "schema": {
               "$ref": "#/definitions/v1alpha1RepoCreds"
             }
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi",
+            "description": "The set of field mask paths.",
+            "name": "updateMask.paths",
+            "in": "query"
           }
         ],
         "responses": {
@@ -2981,6 +2991,22 @@
             "type": "string",
             "description": "Reference between project and repository that allow you automatically to be added as item inside SourceRepos project entity.",
             "name": "project",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Connection type of the repository.",
+            "name": "connectionType",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi",
+            "description": "The set of field mask paths.",
+            "name": "updateMask.paths",
             "in": "query"
           }
         ],
