@@ -121,6 +121,10 @@ func local_request_RepoCredsService_CreateRepositoryCredentials_0(ctx context.Co
 
 }
 
+var (
+	filter_RepoCredsService_UpdateRepositoryCredentials_0 = &utilities.DoubleArray{Encoding: map[string]int{"creds": 0, "url": 1}, Base: []int{1, 2, 1, 0, 0}, Check: []int{0, 1, 2, 3, 2}}
+)
+
 func request_RepoCredsService_UpdateRepositoryCredentials_0(ctx context.Context, marshaler runtime.Marshaler, client RepoCredsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RepoCredsUpdateRequest
 	var metadata runtime.ServerMetadata
@@ -149,6 +153,13 @@ func request_RepoCredsService_UpdateRepositoryCredentials_0(ctx context.Context,
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "creds.url", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RepoCredsService_UpdateRepositoryCredentials_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.UpdateRepositoryCredentials(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -184,6 +195,13 @@ func local_request_RepoCredsService_UpdateRepositoryCredentials_0(ctx context.Co
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "creds.url", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RepoCredsService_UpdateRepositoryCredentials_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.UpdateRepositoryCredentials(ctx, &protoReq)

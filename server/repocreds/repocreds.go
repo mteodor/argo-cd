@@ -1,6 +1,9 @@
 package repocreds
 
 import (
+	"github.com/argoproj/argo-cd/v2/util/grpc"
+	protov1 "github.com/golang/protobuf/proto"
+	"github.com/mennanov/fmutils"
 	"reflect"
 
 	"github.com/argoproj/argo-cd/v2/util/argo"
@@ -117,6 +120,17 @@ func (s *Server) UpdateRepositoryCredentials(ctx context.Context, q *repocredspk
 	if err := s.enf.EnforceErr(ctx.Value("claims"), rbacpolicy.ResourceRepositories, rbacpolicy.ActionUpdate, q.Creds.URL); err != nil {
 		return nil, err
 	}
+
+	if q.UpdateMask != nil && len(q.UpdateMask.Paths) != 0 {
+		existing, err := s.db.GetRepositoryCredentials(ctx, q.Creds.URL)
+		if err != nil {
+			return nil, err
+		}
+
+		grpc.Mask(protov1.MessageV2(existing), protov1.MessageV2(q.Creds), fmutils.NestedMaskFromPaths(q.UpdateMask.Paths))
+		q.Creds = existing
+	}
+
 	_, err := s.db.UpdateRepositoryCredentials(ctx, q.Creds)
 	return q.Creds, err
 }

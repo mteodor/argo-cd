@@ -8,6 +8,7 @@ package repocreds;
 
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
 import "k8s.io/api/core/v1/generated.proto";
 import "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1/generated.proto";
 
@@ -35,6 +36,7 @@ message RepoCredsCreateRequest {
 // RepoCredsUpdateRequest is a request for updating existing repository credentials config
 message RepoCredsUpdateRequest {
 	github.com.argoproj.argo_cd.v2.pkg.apis.application.v1alpha1.RepoCreds creds = 1;
+	google.protobuf.FieldMask updateMask = 3001;
 }
 
 // RepoCredsService implements CRUD actions for managing repository credentials config
